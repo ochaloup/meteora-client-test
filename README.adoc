@@ -1,0 +1,10 @@
+= Solana rust client calls for Meteora
+
+Test calls for https://meteora.ag
+
+== To run
+
+[source,sh]
+----
+cargo run
+----
