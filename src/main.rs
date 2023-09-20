@@ -1,39 +1,62 @@
 use anchor_lang;
+use mercurial_vault::state::{LockedProfitTracker, Vault, LOCKED_PROFIT_DEGRADATION_DENOMINATOR};
 use solana_client::rpc_client::RpcClient;
+use solana_sdk::account::ReadableAccount;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
-use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
-// use anchor_lang::{account, AnchorSerialize, AnchorDeserialize};
-// use mercurial_vault::context::VaultBumps;
-// use mercurial_vault::state::{LockedProfitTracker, MAX_STRATEGY};
-use mercurial_vault::state::{LockedProfitTracker, Vault, LOCKED_PROFIT_DEGRADATION_DENOMINATOR};
-use solana_sdk::account::ReadableAccount;
 use spl_associated_token_account::get_associated_token_address;
 use std::convert::TryInto;
+use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+/**
+ * This is a test to work with Meteora SDK to find out about a user wallet what is his share of the vault.
+ * We use mSOL Meteora vault: 8p1VKP45hhqq5iZG5fNGoi7ucme8nFLeChoDWNy7rWFm
+ * On API to get list of pools: https://app.meteora.ag/amm/pools, to get list of vaults: https://merv2-api.mercurial.finance/vault_info
+ * The vault SDK is here: https://github.com/mercurial-finance/vault-sdk
+ *
+ * Calculation of the user share is based on the vault SDK typescript client at README: https://github.com/mercurial-finance/vault-sdk/tree/main/ts-client
+ * ```ignore
+ * const userShare = await vaultImpl.getUserBalance(mockWallet.publicKey);
+ * const unlockedAmount = await vaultImpl.getWithdrawableAmount()
+ * const lpSupply = await vaultImpl.getVaultSupply();
+ * // To convert user's LP balance into underlying token amount
+ * const underlyingShare = helper.getAmountByShare(userShare, unlockedAmount, lpSupply)
+ * ```
+ *
+ * We can check what are token accounts of particular LP mint (in our case of the mSOL vault) by using API:
+ * 21bR3D4QR4GzopVco44PVMBXwHFpSYrbrdeNwdKk7umb
+ * we can use RCP call
+ * ```ignore
+ * RPC_URL="..."
+ * MINT="21bR3D4QR4GzopVco44PVMBXwHFpSYrbrdeNwdKk7umb"
+ * curl "$RPC_URL" -X POST -H "Content-Type: application/json" -d '
+ *   {
+ *     "jsonrpc": "2.0",
+ *     "id": 1,
+ *     "method": "getProgramAccounts",
+ *     "params": [
+ *       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+ *       {
+ *         "encoding": "jsonParsed",
+ *         "filters": [
+ *           {
+ *             "dataSize": 165
+ *           },
+ *           {
+ *             "memcmp": {
+ *               "offset": 0,
+ *               "bytes": "'"${MINT}"'"
+ *             }
+ *           }
+ *         ]
+ *       }
+ *     ]
+ * }'
+ * ```
+ */
 
 const RPC_URL: &str = "https://api.mainnet-beta.solana.com";
-
-// #[account]
-// #[derive(Default, Debug, AnchorDeserialize)]
-// pub struct Vault {
-//     pub enabled: u8,
-//     pub bumps: VaultBumps,
-//
-//     pub total_amount: u64,
-//
-//     pub token_vault: Pubkey,
-//     pub fee_vault: Pubkey,
-//     pub token_mint: Pubkey,
-//
-//     pub lp_mint: Pubkey,
-//     pub strategies: [Pubkey; MAX_STRATEGY],
-//
-//     pub base: Pubkey,
-//     pub admin: Pubkey,
-//     pub operator: Pubkey, // person to send crank
-//     pub locked_profit_tracker: LockedProfitTracker,
-// }
 
 fn main() {
     let meteora_msol_vault: Pubkey =
@@ -93,6 +116,7 @@ fn main() {
         .parse()
         .unwrap();
 
+    // just expecting ATA is a user ATA, when there is the incentives program in play then ATA is calculated differently
     let expected_pk = "AWuNkfDa5o7sGaDTB6JBYV371CCQXnDAXPNwgxJxjShY";
     let wallet = Pubkey::from_str("5ZTBXQRpKa7TUVeYgC8tXVEFiMaTe77nR1aJcBRdF1Vz").unwrap();
     let user_ata = get_associated_token_address(&wallet, &vault.lp_mint);
