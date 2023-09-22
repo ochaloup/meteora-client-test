@@ -29,7 +29,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
  * we can use RCP call
  * ```ignore
  * RPC_URL="..."
- * MINT="21bR3D4QR4GzopVco44PVMBXwHFpSYrbrdeNwdKk7umb"
+ * MINT="21bR3D4QR4GzopVco44PVMBXwHFpSYrbrdeNwdKk7umb"  # mSOL meteora vault mint
+ * # MINT="7HqhfUqig7kekN8FbJCtQ36VgdXKriZWQ62rTve9ZmQ" # mSOL mercurial stable swap mint
  * curl "$RPC_URL" -X POST -H "Content-Type: application/json" -d '
  *   {
  *     "jsonrpc": "2.0",
@@ -52,13 +53,39 @@ use std::time::{SystemTime, UNIX_EPOCH};
  *         ]
  *       }
  *     ]
- * }'
+ * }' | jq '.'
+ * ```
+ */
+
+/**
+ * The other call works with the mercurial AMM dynamic SDK which is the stable curve pools.
+ * SDK is at https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk
+ * The way how to  get data about user share is from
+ * https://github.com/mercurial-finance/mercurial-dynamic-amm-sdk/tree/master/ts-client
+ *
+ * ```ignore
+ * // Get the user's ATA LP balance
+ * const userLpBalance = await constantProductPool.getUserBalance(mockWallet.publicKey);
  * ```
  */
 
 const RPC_URL: &str = "https://api.mainnet-beta.solana.com";
 
 fn main() {
+    let arg = std::env::args().nth(1);
+    let arg_ref = arg.as_ref();
+    if arg.is_none() || arg_ref.unwrap() == "meteora" || arg_ref.unwrap().eq("m") {
+        println!("--- Meteora vault ---");
+        meteora_vault()
+    } else if arg_ref.unwrap().eq("dynamic") || arg_ref.unwrap().eq("d") {
+        println!("--- Mercurial vault ---");
+        mercurial_vault()
+    } else {
+        println!("Wrong first argument, specify vault: meteora or dynamic")
+    }
+}
+
+fn meteora_vault() {
     let meteora_msol_vault: Pubkey =
         Pubkey::from_str("8p1VKP45hhqq5iZG5fNGoi7ucme8nFLeChoDWNy7rWFm").unwrap();
     let connection = RpcClient::new_with_commitment(RPC_URL, CommitmentConfig::confirmed());
@@ -149,4 +176,17 @@ fn main() {
         "Hello vault! {}, user {} has got {} mSOL lamports",
         meteora_msol_vault, wallet, underlaying_share
     );
+}
+
+fn mercurial_vault() {
+    let _mercurial_stable_swap_msol_pool: Pubkey =
+        Pubkey::from_str("MAR1zHjHaQcniE2gXsDptkyKUnNfMEsLBVcfP7vLyv7").unwrap();
+    // let mercurial_lp_mint: Pubkey =
+    //     Pubkey::from_str("7HqhfUqig7kekN8FbJCtQ36VgdXKriZWQ62rTve9ZmQ").unwrap();
+
+    // TODO: loading data from https://github.com/mercurial-finance/stable-swap-n-pool-instructions
+    // let connection = RpcClient::new_with_commitment(RPC_URL, CommitmentConfig::confirmed());
+    // let pool_account = connection.get_account(&mercurial_msol_pool).unwrap();
+    // let pool: Pool =
+    //     anchor_lang::AccountDeserialize::try_deserialize(&mut pool_account.data()).unwrap();
 }

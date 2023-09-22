@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 mercurial-vault = "0.4.7"
+# mercurial-amm = { version = "0.4.9", features = ["no-entrypoint"] }
+# TODO load from git mercurial_stable_swap_n_pool_instructionss
 solana-sdk = "~1.14.12"
 spl-associated-token-account = { version = "1.1.2", features = ["no-entrypoint"] }
 solana-client = "~1.14.12"
